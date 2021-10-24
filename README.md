@@ -5,6 +5,8 @@ A simple cache server that accumulates records and transmits them to the client 
 
 ## Requirements
 * cmake 3.5+
+* POCO 1.7.9
+* gtest 1.8.1
 
 ## Configure and build
 ```
