@@ -1,0 +1,8 @@
+.downloaded
+.vscode
+*.exe
+*.obj
+*.bak
+mbuild
+mbuild64
+build
