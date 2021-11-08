@@ -39,19 +39,25 @@ namespace engine
 	}
 
 	cache_block::cache_block(const fs::path& tmp_path,
-		const fs::path& ready_path,
-		const fs::path& del_path,
-		bool in_memory) 
+							 const fs::path& ready_path,
+							 const fs::path& del_path,
+							 const fs::path& fail_path,
+							 bool in_memory,
+		                     bool remove_file,
+							 cache_block_state state)
 		: m_tmp_path(tmp_path),
 		  m_ready_path(ready_path),
 		  m_del_path(del_path),
+		  m_fail_path(fail_path),
 		  m_records_count(0),
 		  m_in_memory(in_memory),
-		  m_state(cache_block_state::TEMP)
+		  m_remove_file(remove_file),
+		  m_state(state)
 	{
-		if (m_in_memory && is_file_exists(m_tmp_path))
+		auto curr_path = get_path();
+		if (m_in_memory && is_file_exists(curr_path))
 		{
-			std::string json_dump = read_from_file(m_tmp_path);
+			std::string json_dump = read_from_file(curr_path);
 			m_records = deserialize(pack_to_array(json_dump));
 		}
 		else
@@ -65,12 +71,30 @@ namespace engine
 	{
 		try
 		{
-			set_ready();
+			if (is_temp())
+			{
+				set_ready();
+			}
+			else if (is_released() && m_remove_file)
+			{
+				remove();
+			}
 		}
 		catch (std::exception& err)
 		{
 			Logger::get("cachesrv").error(err.what());
 		}
+	}
+
+	fs::path cache_block::get_path() const
+	{
+		if (m_state == cache_block_state::READY)
+			return m_ready_path;
+		else if (m_state == cache_block_state::FAILED)
+			return m_fail_path;
+		else if (m_state == cache_block_state::RELEASED)
+			return m_del_path;
+		return m_tmp_path;
 	}
 
 	void cache_block::append(const records_array_type& records)
@@ -102,7 +126,7 @@ namespace engine
 		{
 			if (m_records->size() != 0)
 			{
-				records.swap(m_records);
+				records = m_records;
 			}
 			else
 			{
@@ -115,8 +139,16 @@ namespace engine
 
 	void cache_block::set_ready()
 	{
-		if (!is_temp() || !is_file_exists(m_tmp_path))
+		if (!is_temp())
+		{
+			Logger::get("cachesrv").information("set_ready: block is not in the 'Temporary' state: " + get_path().string());
 			return;
+		}
+		if (!is_file_exists(m_tmp_path))
+		{
+			Logger::get("cachesrv").information("set_ready: file doesn't exist: " + m_tmp_path.string());
+			return;
+		}
 
 		m_ready_path = file_move(m_tmp_path, m_ready_path);
 		m_state = cache_block_state::READY;
@@ -124,12 +156,20 @@ namespace engine
 
 	void cache_block::set_failed()
 	{
-		if (!is_ready() || !is_file_exists(m_ready_path))
+		if (!is_ready())
+		{
+			Logger::get("cachesrv").information("set_failed: block is not in the 'Ready' state: " + get_path().string());
 			return;
+		}
+		if (!is_file_exists(m_ready_path))
+		{
+			Logger::get("cachesrv").information("set_failed: file doesn't exist: " + m_ready_path.string());
+			return;
+		}
 
 		try
 		{
-			m_del_path = file_move(m_ready_path, m_del_path);
+			m_fail_path = file_move(m_ready_path, m_fail_path);
 			m_state = cache_block_state::FAILED;
 		}
 		catch (std::exception& err)
@@ -140,11 +180,34 @@ namespace engine
 
 	void cache_block::release()
 	{
-		if (!is_ready() || !is_file_exists(m_ready_path))
+		if (!is_ready())
+		{
+			Logger::get("cachesrv").information("release: block is not in the 'Ready' state: " + get_path().string());
 			return;
+		}
+		if (!is_file_exists(m_ready_path))
+		{
+			Logger::get("cachesrv").information("release: file doesn't exist: " + m_ready_path.string());
+			return;
+		}
 
-		fs::remove(m_ready_path);
+		m_del_path = file_move(m_ready_path, m_del_path);
 		m_state = cache_block_state::RELEASED;
+	}
+
+	void cache_block::remove()
+	{
+		if (!is_released())
+		{
+			Logger::get("cachesrv").information("remove: block is not in the 'Released' state: " + get_path().string());
+			return;
+		}
+		if (!is_file_exists(m_del_path))
+		{
+			Logger::get("cachesrv").information("remove: file doesn't exist: " + m_del_path.string());
+			return;
+		}
+		fs::remove(m_del_path);
 	}
 
 	bool cache_block::is_released() const

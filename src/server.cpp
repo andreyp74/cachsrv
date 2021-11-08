@@ -34,8 +34,14 @@ namespace net
 
 	void server::send(const std::string& msg)
 	{
-		net::send(this->socket(), msg);
-		Logger::get("cachesrv").information("Sent: " + msg);
+		if (net::send(this->socket(), msg))
+		{
+			Logger::get("cachesrv").information("Sent: " + msg);
+		}
+		else
+		{
+			Logger::get("cachesrv").error("Can't send: " + msg);
+		}
 	}
 
 	void server::run()

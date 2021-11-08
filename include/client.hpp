@@ -10,20 +10,22 @@
 //#include "Poco/Net/SocketStream.h"
 //#include "Poco/StreamCopier.h"
 
+#include "client_iface.hpp"
+
 
 namespace net
 {
 	using namespace Poco;
 	using namespace Poco::Net;
 
-	class client final
+	class client final : public client_iface
 	{
 	public:
 		client(const std::string& host, Poco::UInt16 port);
-		~client();
+		~client() override;
 
-		std::string receive();
-		void send(const std::string& packet);
+		std::string receive() override;
+		bool send(const std::string& packet) override;
 
 	private:
 		client(client&) = delete;

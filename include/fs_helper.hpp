@@ -16,6 +16,8 @@ namespace engine
 
 	fs::path file_move(const fs::path& file_path, const fs::path& dst_path);
 
+	void remove_all_from_dir(const fs::path& dir_path);
+
 	std::string get_file_name(const std::string& file_path);
 	bool is_file_exists(const fs::path& file_path);
 

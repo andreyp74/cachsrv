@@ -24,7 +24,7 @@ namespace engine
 		Poco::DynamicAny result;
 		try
 		{
-			parser.parse(dump);
+			result = parser.parse(dump);
 			return result.extract<Array::Ptr>();
 		}
 		catch (JSONException& err)

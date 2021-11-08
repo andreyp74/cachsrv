@@ -40,9 +40,17 @@ namespace net
 		return msg;
 	}
 
-	void client::send(const std::string& msg)
+	bool client::send(const std::string& msg)
 	{
-		net::send(this->socket, msg);
-		Logger::get("cachesrv").information("Sent: " + msg);
+		bool ret = net::send(this->socket, msg);
+		if (ret)
+		{
+			Logger::get("cachesrv").information("Sent: " + msg);
+		}
+		else
+		{
+			Logger::get("cachesrv").error("Can't send: " + msg);
+		}
+		return ret;
 	}
 }

@@ -3,7 +3,8 @@
 #include <time.h>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
+//#include <fstream>
+#include <cstdio>
 
 #include "fs_helper.hpp"
 
@@ -13,14 +14,13 @@ namespace engine
 {
 	void append_to_file(const fs::path& file_path, const std::string& str)
 	{
-		std::ofstream outfile(file_path, std::ios_base::app | std::ios_base::binary | std::ios_base::out);
-		if (!outfile.is_open())
+		FILE* outfile = fopen(file_path.string().c_str(), "a+b");
+		if (!outfile)
 		{
 			throw std::runtime_error("Couldn't open file " + file_path.string());
 		}
-
-		outfile.write(str.c_str(), str.length());
-		outfile.close();
+		fwrite(str.c_str(), sizeof(char), str.length(), outfile);
+		fclose(outfile);
 	}
 
 	std::string read_from_file(const fs::path& file_path)
@@ -28,17 +28,17 @@ namespace engine
 		std::string str;
 		char buffer[8 * 1024];
 
-		std::ifstream infile(file_path, std::ios_base::binary | std::ios_base::in);
-		if (!infile.is_open())
+		FILE* infile = fopen(file_path.string().c_str(), "rb");
+		if (!infile)
 		{
 			throw std::runtime_error("Couldn't open file " + file_path.string());
 		}
 
-		while (infile.read((char*)&buffer, sizeof(buffer)))
+		while (int bytes = fread(buffer,  sizeof(char), sizeof(buffer), infile))
 		{
-			str += std::string(buffer);
+			str += std::string(buffer, bytes);
 		}
-		infile.close();
+		fclose(infile);
 		return str;
 	}
 
@@ -63,6 +63,14 @@ namespace engine
 		return newfile_path;
 	}
 
+	void remove_all_from_dir(const fs::path& dir_path)
+	{
+		for (auto const& dir_entry : fs::directory_iterator(dir_path))
+		{
+			fs::remove_all(dir_entry.path());
+		}
+	}
+
 	bool is_file_exists(const fs::path& file_path)
 	{
 		return fs::exists(file_path) && !fs::is_directory(file_path);
@@ -75,13 +83,11 @@ namespace engine
 
 	fs::path filename_with_timepoint(const system_clock::time_point& time)
 	{
-		//TODO
-		/*std::time_t tt = system_clock::to_time_t(time);
+		std::time_t tt = system_clock::to_time_t(time);
 		std::tm* ptm = std::localtime(&tt);
 		char mbstr[100];
-		std::strftime(mbstr, sizeof(mbstr), "%Y%m%d_%H%M%S", ptm);*/
-
-		return "123456";
+		std::strftime(mbstr, sizeof(mbstr), "%Y%m%d_%H%M%S", ptm);
+		return mbstr;
 	}
 
 	system_clock::time_point timepoint_from_filename(const fs::path& file_name)
