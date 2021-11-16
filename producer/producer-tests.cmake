@@ -1,25 +1,23 @@
 ﻿set(PROJECT_TEST_NAME ${PROJECT_NAME}.Test)
 
-include_directories(include src "${POCO_INCLUDE_DIRS}" "${GTEST_INCLUDE_DIRS}")
+include_directories(include src tests "${POCO_INCLUDE_DIRS}")
 
 file(GLOB_RECURSE TEST_SRC
-        RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.hpp)
+         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.hpp)
+
 
 file(GLOB_RECURSE EXTERNAL_SRC
-        RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp)
-
-list(REMOVE_ITEM EXTERNAL_SRC src/main.cpp)
+         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp)
 
 source_group(Sources FILES ${EXTERNAL_SRC})
 source_group(Tests FILES ${TEST_SRC})
 
-add_executable(${PROJECT_TEST_NAME} ${TEST_SRC} ${EXTERNAL_SRC})
+add_executable(${PROJECT_TEST_NAME} ${TEST_SRC} ${EXTERNAL_SRC} )
 add_dependencies(${PROJECT_TEST_NAME} poco googletest)
-
 
 if(UNIX)
     target_link_libraries(${PROJECT_TEST_NAME} ${POCO_LIBRARIES})
