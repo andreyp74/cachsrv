@@ -29,6 +29,9 @@ using namespace std::literals;
 
 namespace net
 {
+	template<typename T>
+	using deleted_unique_ptr = std::unique_ptr<T, std::function<void(T*)>>;
+
 	class training_app : public ServerApplication
 	{
 	protected:
@@ -65,31 +68,40 @@ namespace net
 		{
 			Logger& logger = Logger::get("cachesrv");
 
-			program_options options = parse_command_line(args);
+			try
+			{
+				program_options options = parse_command_line(args);
 
-			engine::records_cache_config config;
-			config.cache_path("./cache");
-			config.cache_retention_timeout_seconds(0s);
-			config.cache_store_timeout_seconds(60s);
-			config.number_of_cached_blocks_in_memory(10000);
-			config.set_block_size(1000);
-			config.use_cache(true);
-			config.use_retention(false);
+				engine::records_cache_config config;
+				config.cache_path("./cache");
+				config.cache_retention_timeout_seconds(0s);
+				config.cache_store_timeout_seconds(60s);
+				config.number_of_cached_blocks_in_memory(10000);
+				config.set_block_size(1000);
+				config.use_cache(true);
+				config.use_retention(false);
 
-			auto clptr = std::make_shared<client>(options.client_host, (Poco::UInt16)options.client_port);
+				auto clptr = std::make_shared<client>(options.client_host, (Poco::UInt16)options.client_port);
+				//TODO reconnect loop
+				clptr->connect();
 
-			auto storage = std::make_shared<engine::records_cache>(config, clptr);
+				auto storage = std::make_shared<engine::records_cache>(config, clptr);
 
-			ServerSocket socket((Poco::UInt16)options.server_port);
-			TCPServer server(new server_factory(storage), socket);
-			server.start();
+				ServerSocket socket((Poco::UInt16)options.server_port);
+				TCPServerConnectionFactory::Ptr factory(new server_factory(storage));
+				deleted_unique_ptr<TCPServer> server(new TCPServer(factory, socket),
+													 [](TCPServer* server) { server->stop(); });
+				server->start();
 
-			logger.information("Server started on port: " + options.server_port);
+				logger.information("Server started on port: "s + std::to_string(options.server_port));
 
-			// wait for CTRL-C or kill
-			waitForTerminationRequest();
-
-			server.stop();
+				// wait for CTRL-C or kill
+				waitForTerminationRequest();
+			}
+			catch (std::exception& err)
+			{
+				logger.error("Error occurred: "s + err.what());
+			}
 
 			return Application::EXIT_OK;
 		}

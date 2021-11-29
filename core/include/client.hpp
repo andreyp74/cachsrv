@@ -7,8 +7,6 @@
 
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/StreamSocket.h"
-//#include "Poco/Net/SocketStream.h"
-//#include "Poco/StreamCopier.h"
 
 #include "client_iface.hpp"
 
@@ -24,6 +22,8 @@ namespace net
 		client(const std::string& host, Poco::UInt16 port);
 		~client() override;
 
+		void  connect();
+
 		std::string receive() override;
 		bool send(const std::string& packet) override;
 
@@ -32,8 +32,6 @@ namespace net
 		client& operator=(client&) = delete;
 
 		StreamSocket& get_socket() { return socket; }
-
-		void  connect();
 
 	private:
 		// IP endpoint/socket address (consists of host addr and port #)
